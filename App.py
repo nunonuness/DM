@@ -1,11 +1,10 @@
-import dash
 from dash import Dash, html, dcc, Input, Output
 import pandas as pd
 import plotly.express as px
 from sklearn.manifold import TSNE
 
 # pre-processed dataset (contains the required features and cluster labels)
-df = pd.read_csv('df4.csv')  
+df = pd.read_csv('df4.csv')
 
 # based characteristics features
 preferences = df[['vendor_loyalty_score', 'relative_cuisine_variety', 'chain_consumption']]
@@ -36,7 +35,7 @@ app = Dash(__name__, external_stylesheets=['https://stackpath.bootstrapcdn.com/b
 # layout for the main page
 main_page_layout = html.Div(
     style={
-        'height': '100vh',  
+        'height': '100vh',
         'background': '#008080',
         'color': '#ffffff',
         'display': 'flex',
@@ -50,11 +49,9 @@ main_page_layout = html.Div(
     children=[
         html.H1('ABCDEats Inc. Customer Segmentation',
                 style={'fontSize': '50px', 'fontWeight': '700', 'letterSpacing': '2px'}),
-
         html.Div(
             style={'marginTop': '50px', 'display': 'flex', 'justifyContent': 'center', 'gap': '20px'},
             children=[
-                # Button 1
                 dcc.Link(
                     html.Button('Cluster Exploration 🌌',
                                 className='btn btn-lg btn-light',
@@ -62,7 +59,6 @@ main_page_layout = html.Div(
                                        'boxShadow': '0 4px 6px rgba(0, 0, 0, 0.15)', 'transition': 'all 0.3s ease'}),
                     href='/tsne'
                 ),
-                # Button 2
                 dcc.Link(
                     html.Button('Visualization Tools 📊',
                                 className='btn btn-lg btn-dark',
@@ -79,203 +75,64 @@ main_page_layout = html.Div(
 cluster_exploration_page_layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'margin': 'auto'}, children=[
     html.H1('Cluster Exploration', className='text-center mb-4'),
 
-    # dropdown to select Cluster
     dcc.Dropdown(
         id='cluster-select',
         options=[{'label': f'Cluster {i}', 'value': i} for i in df['merged_labels'].unique()],
-        value=df['merged_labels'].unique()[0],  # Default value
+        value=df['merged_labels'].unique()[0],
         placeholder="Select a Cluster"
     ),
-
-    # dropdown for based characteristics
     dcc.Dropdown(
         id='feature-select',
         options=[
             {'label': 'Preferences-Based', 'value': 'preferences'},
             {'label': 'Behavioral-Based', 'value': 'behavioral'}
         ],
-        value='preferences',  # Default value
+        value='preferences',
         placeholder="Select Feature Group"
     ),
-
-    # ccatter plot to display clusters
     dcc.Graph(id='cluster-graph'),
-
-    # cluster summary table
     html.Div(id='cluster-summary', style={'marginTop': '40px'}),
-
-    # back button
     dcc.Link(html.Button('Back to Main Page', className='btn btn-warning mt-4'), href='/')
 ])
 
-# Callbacks for the Cluster Exploration page
 @app.callback(
     [Output('cluster-graph', 'figure'),
-     Output('cluster-summary', 'children'),
-     Output('cluster-distribution-pie', 'figure')],
+     Output('cluster-summary', 'children')],
     [Input('feature-select', 'value'),
      Input('cluster-select', 'value')]
 )
 def update_cluster_visuals(feature_group, selected_cluster):
     try:
-        # Filter data based on feature group selection
         features = preferences.columns if feature_group == 'preferences' else behaviours.columns
-
-        # Filter data by cluster selection
         cluster_data = df[df['merged_labels'] == selected_cluster]
-
-        # Apply t-SNE on the selected features
         tsne = TSNE(n_components=2, random_state=42)
         tsne_results = tsne.fit_transform(cluster_data[features])
+        cluster_data['TSNE1'], cluster_data['TSNE2'] = tsne_results[:, 0], tsne_results[:, 1]
 
-        # Add the t-SNE results to the dataframe
-        cluster_data['TSNE1'] = tsne_results[:, 0]
-        cluster_data['TSNE2'] = tsne_results[:, 1]
-
-        # Create the interactive t-SNE plot
         fig = px.scatter(cluster_data, x='TSNE1', y='TSNE2', color='merged_labels',
                          title=f"t-SNE Plot for Cluster {selected_cluster}",
                          labels={'TSNE1': 't-SNE Component 1', 'TSNE2': 't-SNE Component 2'},
                          color_continuous_scale='Viridis')
 
-        # Create a summary of the cluster
         cluster_summary = html.Table([
             html.Tr([html.Th('Cluster'), html.Td(selected_cluster)]),
             html.Tr([html.Th('Number of Data Points'), html.Td(len(cluster_data))]),
         ])
 
-        # Create a pie chart
-        pie_fig = px.pie(cluster_data, names='relative_cuisine_variety',
-                         title=f"Cluster {selected_cluster} Cuisine Variety Distribution")
-
-        return fig, cluster_summary, pie_fig
+        return fig, cluster_summary
     except Exception as e:
-        return {}, "Error generating visuals. Check feature selection.", {}
-    
+        return {}, html.Div(f"Error: {str(e)}")
 
-# layout for the Visualization Tools page
-compare_page_layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'margin': 'auto'}, children=[
-    html.H1('Visualization Tools 📊', className='text-center mb-4'),
-
-    # dropdown for feature selection
-    dcc.Dropdown(
-        id='chart-feature-select',
-        options=[{'label': col, 'value': col} for col in df_columns if col not in ['merged_labels']],
-        multi=False,  # Single selection for most charts
-        placeholder="Select Feature for Visualization",
-        style={'width': '50%'}
-    ),
-
-    # dropdown for heatmap feature selection
-    dcc.Dropdown(
-        id='heatmap-feature-select',
-        options=[{'label': col, 'value': col} for col in df_columns if col not in ['merged_labels']],
-        multi=True,  # Multi-selection for heatmap
-        placeholder="Select Features for Heatmap",
-        style={'width': '50%', 'marginTop': '20px'}
-    ),
-
-    # button group for choosing the type of visualization
-    html.Div(
-        id='chart-buttons',
-        children=[
-            html.Button('Box Plot', id='box-plot-button', n_clicks=0, className='btn btn-secondary'),
-            html.Button('Histogram', id='histogram-button', n_clicks=0, className='btn btn-info'),
-            html.Button('Line Chart', id='line-chart-button', n_clicks=0, className='btn btn-warning'),
-            html.Button('Heatmap', id='heatmap-button', n_clicks=0, className='btn btn-danger')
-        ],
-        style={'marginTop': '20px', 'display': 'flex', 'justifyContent': 'center', 'gap': '10px'}
-    ),
-
-    # claceholder for the generated chart
-    dcc.Graph(id='visualization-output'),
-
-    # back button
-    dcc.Link(html.Button('Back to Main Page', className='btn btn-warning mt-4'), href='/')
-])
-
-# Callback for the Visualization Tools page (without Bar Chart)
-@app.callback(
-    Output('visualization-output', 'figure'),
-    [Input('chart-feature-select', 'value'),
-     Input('heatmap-feature-select', 'value'),
-     Input('box-plot-button', 'n_clicks'),
-     Input('histogram-button', 'n_clicks'),
-     Input('line-chart-button', 'n_clicks'),
-     Input('heatmap-button', 'n_clicks')]
-)
-
-# function to update the visualization based on the selected feature and button click
-def update_visualization(selected_feature, heatmap_features):
-    # check which button was clicked
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        return {}
-
-    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
-    # handling the heatmap button separately
-    if button_id == 'heatmap-button':
-        # check if heatmap features are selected
-        if not heatmap_features:
-            return px.imshow([], title="Select Features for Heatmap")
-
-        try:
-            # filter the DataFrame to include only selected features
-            filtered_data = df[heatmap_features]
-            
-            # ensure all selected columns are numeric
-            numeric_data = filtered_data.select_dtypes(include=['number'])
-
-            if numeric_data.empty:
-                return px.imshow([], title="No Numeric Features Found", labels={'color': 'Correlation'})
-
-            # compute the correlation matrix
-            corr_matrix = numeric_data.corr()
-
-            # generate the heatmap figure
-            fig = px.imshow(corr_matrix, text_auto=True, color_continuous_scale='Viridis',
-                            title="Feature Correlation Heatmap",
-                            labels={'color': 'Correlation'})
-
-            return fig
-        except Exception as e:
-            return px.imshow([], title=f"Error Generating Heatmap: {str(e)}", labels={'color': 'Correlation'})
-
-    # box plot for feature distribution (by cluster or other categorical grouping)
-    if button_id == 'box-plot-button':
-        fig = px.box(df, y=selected_feature, title=f'{selected_feature} Box Plot', color='merged_labels')
-        return fig
-
-    # histogram for feature distribution
-    if button_id == 'histogram-button':
-        fig = px.histogram(df, x=selected_feature, title=f'{selected_feature} Histogram', nbins=30)
-        return fig
-
-    # line chart (time-based or trend-based, assuming we have something like time series data)
-    if button_id == 'line-chart-button':
-        if 'first_order' in df.columns:
-            fig = px.line(df, x='first_order', y=selected_feature, title=f'{selected_feature} Over Time')
-            return fig
-
-    return {}
-
-# define the app layout with a location component for URL routing
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     html.Div(id='page-content')
 ])
 
-# define the callback to update the page content based on the URL
 @app.callback(Output('page-content', 'children'), [Input('url', 'pathname')])
 def display_page(pathname):
     if pathname == '/tsne':
         return cluster_exploration_page_layout
-    elif pathname == '/compare':
-        return compare_page_layout
-    else:
-        return main_page_layout
+    return main_page_layout
 
-# Run the server
 if __name__ == '__main__':
     app.run_server(debug=True)
