@@ -4,14 +4,15 @@ import pandas as pd
 import plotly.express as px
 from sklearn.manifold import TSNE
 
-# Load the pre-processed dataset (already contains the required features and cluster labels)
-df = pd.read_csv('df4.csv')  # Replace with your actual file path
+# pre-processed dataset (contains the required features and cluster labels)
+df = pd.read_csv('df4.csv')  
 
-# Define the feature sets
+# based characteristics features
 preferences = df[['vendor_loyalty_score', 'relative_cuisine_variety', 'chain_consumption']]
 behaviours = df[['first_order', 'days_since_last_order', 'order_frequency', 'total_orders',
                  'total_amount_spent', 'average_spending']]
 
+# features without cluster labels
 df_columns = ['customer_id', 'CUI_American', 'CUI_Asian', 'CUI_Beverages', 'CUI_Cafe',
        'CUI_Chicken Dishes', 'CUI_Chinese', 'CUI_Desserts', 'CUI_Healthy',
        'CUI_Indian', 'CUI_Italian', 'CUI_Japanese', 'CUI_Noodle Dishes',
@@ -28,14 +29,14 @@ df_columns = ['customer_id', 'CUI_American', 'CUI_Asian', 'CUI_Beverages', 'CUI_
        'payment_method', 'age_group', 'customer_lifecycle_stage',
        'peak_order_day', 'peak_order_hour']
 
-# Initialize the app with Bootstrap CSS and suppress callback exceptions
+# initialize the app with Bootstrap CSS and suppress callback exceptions
 app = Dash(__name__, external_stylesheets=['https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css'],
            suppress_callback_exceptions=True)
 
-# Define the layout for the Main page
+# layout for the main page
 main_page_layout = html.Div(
     style={
-        'height': '100vh',  # Full viewport height
+        'height': '100vh',  
         'background': '#008080',
         'color': '#ffffff',
         'display': 'flex',
@@ -68,25 +69,17 @@ main_page_layout = html.Div(
                                 style={'fontSize': '20px', 'padding': '20px 60px', 'borderRadius': '30px',
                                        'boxShadow': '0 4px 6px rgba(0, 0, 0, 0.15)', 'transition': 'all 0.3s ease'}),
                     href='/compare'
-                ),
-                # Button 3
-                dcc.Link(
-                    html.Button('Filter Data 🔍',
-                                className='btn btn-lg btn-warning',
-                                style={'fontSize': '20px', 'padding': '20px 60px', 'borderRadius': '30px',
-                                       'boxShadow': '0 4px 6px rgba(0, 0, 0, 0.15)', 'transition': 'all 0.3s ease'}),
-                    href='/filter'
                 )
             ]
         ),
     ]
 )
 
-# Define the layout for the Cluster Exploration page
+# layout for the Cluster Exploration page
 cluster_exploration_page_layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'margin': 'auto'}, children=[
     html.H1('Cluster Exploration', className='text-center mb-4'),
 
-    # Dropdown to select Cluster
+    # dropdown to select Cluster
     dcc.Dropdown(
         id='cluster-select',
         options=[{'label': f'Cluster {i}', 'value': i} for i in df['merged_labels'].unique()],
@@ -94,7 +87,7 @@ cluster_exploration_page_layout = html.Div(style={'padding': '20px', 'maxWidth':
         placeholder="Select a Cluster"
     ),
 
-    # Dropdown for feature group selection
+    # dropdown for based characteristics
     dcc.Dropdown(
         id='feature-select',
         options=[
@@ -105,56 +98,13 @@ cluster_exploration_page_layout = html.Div(style={'padding': '20px', 'maxWidth':
         placeholder="Select Feature Group"
     ),
 
-    # Scatter plot to display clusters
+    # ccatter plot to display clusters
     dcc.Graph(id='cluster-graph'),
 
-    # Pie chart for additional visual
-    dcc.Graph(id='cluster-distribution-pie'),
-
-    # Cluster summary table
+    # cluster summary table
     html.Div(id='cluster-summary', style={'marginTop': '40px'}),
 
-    # Back button
-    dcc.Link(html.Button('Back to Main Page', className='btn btn-warning mt-4'), href='/')
-])
-
-compare_page_layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'margin': 'auto'}, children=[
-    html.H1('Visualization Tools 📊', className='text-center mb-4'),
-
-    # Dropdown for feature selection
-    dcc.Dropdown(
-        id='chart-feature-select',
-        options=[{'label': col, 'value': col} for col in df_columns if col not in ['merged_labels']],
-        multi=False,  # Single selection for most charts
-        placeholder="Select Feature for Visualization",
-        style={'width': '50%'}
-    ),
-
-    # Dropdown for heatmap feature selection
-    dcc.Dropdown(
-        id='heatmap-feature-select',
-        options=[{'label': col, 'value': col} for col in df_columns if col not in ['merged_labels']],
-        multi=True,  # Multi-selection for heatmap
-        placeholder="Select Features for Heatmap",
-        style={'width': '50%', 'marginTop': '20px'}
-    ),
-
-    # Button group for choosing the type of visualization
-    html.Div(
-        id='chart-buttons',
-        children=[
-            html.Button('Box Plot', id='box-plot-button', n_clicks=0, className='btn btn-secondary'),
-            html.Button('Histogram', id='histogram-button', n_clicks=0, className='btn btn-info'),
-            html.Button('Line Chart', id='line-chart-button', n_clicks=0, className='btn btn-warning'),
-            html.Button('Heatmap', id='heatmap-button', n_clicks=0, className='btn btn-danger')
-        ],
-        style={'marginTop': '20px', 'display': 'flex', 'justifyContent': 'center', 'gap': '10px'}
-    ),
-
-    # Placeholder for the generated chart
-    dcc.Graph(id='visualization-output'),
-
-    # Back button
+    # back button
     dcc.Link(html.Button('Back to Main Page', className='btn btn-warning mt-4'), href='/')
 ])
 
@@ -201,6 +151,48 @@ def update_cluster_visuals(feature_group, selected_cluster):
         return fig, cluster_summary, pie_fig
     except Exception as e:
         return {}, "Error generating visuals. Check feature selection.", {}
+    
+
+# layout for the Visualization Tools page
+compare_page_layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'margin': 'auto'}, children=[
+    html.H1('Visualization Tools 📊', className='text-center mb-4'),
+
+    # dropdown for feature selection
+    dcc.Dropdown(
+        id='chart-feature-select',
+        options=[{'label': col, 'value': col} for col in df_columns if col not in ['merged_labels']],
+        multi=False,  # Single selection for most charts
+        placeholder="Select Feature for Visualization",
+        style={'width': '50%'}
+    ),
+
+    # dropdown for heatmap feature selection
+    dcc.Dropdown(
+        id='heatmap-feature-select',
+        options=[{'label': col, 'value': col} for col in df_columns if col not in ['merged_labels']],
+        multi=True,  # Multi-selection for heatmap
+        placeholder="Select Features for Heatmap",
+        style={'width': '50%', 'marginTop': '20px'}
+    ),
+
+    # button group for choosing the type of visualization
+    html.Div(
+        id='chart-buttons',
+        children=[
+            html.Button('Box Plot', id='box-plot-button', n_clicks=0, className='btn btn-secondary'),
+            html.Button('Histogram', id='histogram-button', n_clicks=0, className='btn btn-info'),
+            html.Button('Line Chart', id='line-chart-button', n_clicks=0, className='btn btn-warning'),
+            html.Button('Heatmap', id='heatmap-button', n_clicks=0, className='btn btn-danger')
+        ],
+        style={'marginTop': '20px', 'display': 'flex', 'justifyContent': 'center', 'gap': '10px'}
+    ),
+
+    # claceholder for the generated chart
+    dcc.Graph(id='visualization-output'),
+
+    # back button
+    dcc.Link(html.Button('Back to Main Page', className='btn btn-warning mt-4'), href='/')
+])
 
 # Callback for the Visualization Tools page (without Bar Chart)
 @app.callback(
@@ -212,34 +204,36 @@ def update_cluster_visuals(feature_group, selected_cluster):
      Input('line-chart-button', 'n_clicks'),
      Input('heatmap-button', 'n_clicks')]
 )
-def update_visualization(selected_feature, heatmap_features, box_clicks, hist_clicks, line_clicks, heatmap_clicks):
-    # Check which button was clicked
+
+# function to update the visualization based on the selected feature and button click
+def update_visualization(selected_feature, heatmap_features):
+    # check which button was clicked
     ctx = dash.callback_context
     if not ctx.triggered:
         return {}
 
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    # Handling the heatmap button separately
+    # handling the heatmap button separately
     if button_id == 'heatmap-button':
-        # Check if heatmap features are selected
+        # check if heatmap features are selected
         if not heatmap_features:
             return px.imshow([], title="Select Features for Heatmap")
 
         try:
-            # Filter the DataFrame to include only selected features
+            # filter the DataFrame to include only selected features
             filtered_data = df[heatmap_features]
             
-            # Ensure all selected columns are numeric
+            # ensure all selected columns are numeric
             numeric_data = filtered_data.select_dtypes(include=['number'])
 
             if numeric_data.empty:
                 return px.imshow([], title="No Numeric Features Found", labels={'color': 'Correlation'})
 
-            # Compute the correlation matrix
+            # compute the correlation matrix
             corr_matrix = numeric_data.corr()
 
-            # Generate the heatmap figure
+            # generate the heatmap figure
             fig = px.imshow(corr_matrix, text_auto=True, color_continuous_scale='Viridis',
                             title="Feature Correlation Heatmap",
                             labels={'color': 'Correlation'})
@@ -248,32 +242,31 @@ def update_visualization(selected_feature, heatmap_features, box_clicks, hist_cl
         except Exception as e:
             return px.imshow([], title=f"Error Generating Heatmap: {str(e)}", labels={'color': 'Correlation'})
 
-    # Box plot for feature distribution (by cluster or other categorical grouping)
+    # box plot for feature distribution (by cluster or other categorical grouping)
     if button_id == 'box-plot-button':
         fig = px.box(df, y=selected_feature, title=f'{selected_feature} Box Plot', color='merged_labels')
         return fig
 
-    # Histogram for feature distribution
+    # histogram for feature distribution
     if button_id == 'histogram-button':
         fig = px.histogram(df, x=selected_feature, title=f'{selected_feature} Histogram', nbins=30)
         return fig
 
-    # Line chart (time-based or trend-based, assuming we have something like time series data)
+    # line chart (time-based or trend-based, assuming we have something like time series data)
     if button_id == 'line-chart-button':
-        # Example: Line plot for trends in a feature like 'days_since_last_order'
         if 'first_order' in df.columns:
             fig = px.line(df, x='first_order', y=selected_feature, title=f'{selected_feature} Over Time')
             return fig
 
     return {}
 
-# Define the app layout with a location component for URL routing
+# define the app layout with a location component for URL routing
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     html.Div(id='page-content')
 ])
 
-# Define the callback to update the page content based on the URL
+# define the callback to update the page content based on the URL
 @app.callback(Output('page-content', 'children'), [Input('url', 'pathname')])
 def display_page(pathname):
     if pathname == '/tsne':
