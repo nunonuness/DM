@@ -1,3 +1,4 @@
+import dash
 from dash import Dash, html, dcc, Input, Output
 import pandas as pd
 import plotly.express as px
@@ -117,20 +118,41 @@ cluster_exploration_page_layout = html.Div(style={'padding': '20px', 'maxWidth':
     dcc.Link(html.Button('Back to Main Page', className='btn btn-warning mt-4'), href='/')
 ])
 
-# Define the layout for the Compare page
 compare_page_layout = html.Div(style={'padding': '20px', 'maxWidth': '1200px', 'margin': 'auto'}, children=[
-    html.H1('Visualization', className='text-center mb-4'),
+    html.H1('Visualization Tools 📊', className='text-center mb-4'),
 
     # Dropdown for feature selection
     dcc.Dropdown(
-        id='heatmap-feature-select',
-        options=[{'label': col, 'value': col} for col in df.columns if col not in ['merged_labels']],
-        multi=True,
-        placeholder="Select Features for Heatmap"
+        id='chart-feature-select',
+        options=[{'label': col, 'value': col} for col in df_columns if col not in ['merged_labels']],
+        multi=False,  # Single selection for most charts
+        placeholder="Select Feature for Visualization",
+        style={'width': '50%'}
     ),
 
-    # Heatmap display
-    dcc.Graph(id='heatmap-graph'),
+    # Dropdown for heatmap feature selection
+    dcc.Dropdown(
+        id='heatmap-feature-select',
+        options=[{'label': col, 'value': col} for col in df_columns if col not in ['merged_labels']],
+        multi=True,  # Multi-selection for heatmap
+        placeholder="Select Features for Heatmap",
+        style={'width': '50%', 'marginTop': '20px'}
+    ),
+
+    # Button group for choosing the type of visualization
+    html.Div(
+        id='chart-buttons',
+        children=[
+            html.Button('Box Plot', id='box-plot-button', n_clicks=0, className='btn btn-secondary'),
+            html.Button('Histogram', id='histogram-button', n_clicks=0, className='btn btn-info'),
+            html.Button('Line Chart', id='line-chart-button', n_clicks=0, className='btn btn-warning'),
+            html.Button('Heatmap', id='heatmap-button', n_clicks=0, className='btn btn-danger')
+        ],
+        style={'marginTop': '20px', 'display': 'flex', 'justifyContent': 'center', 'gap': '10px'}
+    ),
+
+    # Placeholder for the generated chart
+    dcc.Graph(id='visualization-output'),
 
     # Back button
     dcc.Link(html.Button('Back to Main Page', className='btn btn-warning mt-4'), href='/')
@@ -180,43 +202,70 @@ def update_cluster_visuals(feature_group, selected_cluster):
     except Exception as e:
         return {}, "Error generating visuals. Check feature selection.", {}
 
-# Callbacks for the Compare page (Heatmap)
+# Callback for the Visualization Tools page (without Bar Chart)
 @app.callback(
-    Output('heatmap-graph', 'figure'),
-    [Input('heatmap-feature-select', 'value')]
+    Output('visualization-output', 'figure'),
+    [Input('chart-feature-select', 'value'),
+     Input('heatmap-feature-select', 'value'),
+     Input('box-plot-button', 'n_clicks'),
+     Input('histogram-button', 'n_clicks'),
+     Input('line-chart-button', 'n_clicks'),
+     Input('heatmap-button', 'n_clicks')]
 )
-def update_heatmap(selected_features):
-    # Check if the selected features are valid
-    if not selected_features:
-        return px.imshow([], title="No Features Selected for Heatmap", labels={'color': 'Correlation'})
+def update_visualization(selected_feature, heatmap_features, box_clicks, hist_clicks, line_clicks, heatmap_clicks):
+    # Check which button was clicked
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return {}
 
-    try:
-        # Filter the DataFrame to include only selected features
-        filtered_data = df[selected_features]
-        
-        # Ensure all selected columns are numeric
-        numeric_data = filtered_data.select_dtypes(include=['number'])
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-        if numeric_data.empty:
-            return px.imshow([], title="No Numeric Features Found", labels={'color': 'Correlation'})
+    # Handling the heatmap button separately
+    if button_id == 'heatmap-button':
+        # Check if heatmap features are selected
+        if not heatmap_features:
+            return px.imshow([], title="Select Features for Heatmap")
 
-        # Compute the correlation matrix
-        corr_matrix = numeric_data.corr()
+        try:
+            # Filter the DataFrame to include only selected features
+            filtered_data = df[heatmap_features]
+            
+            # Ensure all selected columns are numeric
+            numeric_data = filtered_data.select_dtypes(include=['number'])
 
-        # Generate the heatmap figure
-        fig = px.imshow(corr_matrix, text_auto=True, color_continuous_scale='Viridis',
-                        title="Feature Correlation Heatmap",
-                        labels={'color': 'Correlation'})
+            if numeric_data.empty:
+                return px.imshow([], title="No Numeric Features Found", labels={'color': 'Correlation'})
 
+            # Compute the correlation matrix
+            corr_matrix = numeric_data.corr()
+
+            # Generate the heatmap figure
+            fig = px.imshow(corr_matrix, text_auto=True, color_continuous_scale='Viridis',
+                            title="Feature Correlation Heatmap",
+                            labels={'color': 'Correlation'})
+
+            return fig
+        except Exception as e:
+            return px.imshow([], title=f"Error Generating Heatmap: {str(e)}", labels={'color': 'Correlation'})
+
+    # Box plot for feature distribution (by cluster or other categorical grouping)
+    if button_id == 'box-plot-button':
+        fig = px.box(df, y=selected_feature, title=f'{selected_feature} Box Plot', color='merged_labels')
         return fig
 
-    except Exception as e:
-        # Log the exception and return a blank figure with error message
-        print(f"Error in heatmap generation: {e}")
-        return px.imshow([], title=f"Error Generating Heatmap: {str(e)}", labels={'color': 'Correlation'})
+    # Histogram for feature distribution
+    if button_id == 'histogram-button':
+        fig = px.histogram(df, x=selected_feature, title=f'{selected_feature} Histogram', nbins=30)
+        return fig
 
+    # Line chart (time-based or trend-based, assuming we have something like time series data)
+    if button_id == 'line-chart-button':
+        # Example: Line plot for trends in a feature like 'days_since_last_order'
+        if 'first_order' in df.columns:
+            fig = px.line(df, x='first_order', y=selected_feature, title=f'{selected_feature} Over Time')
+            return fig
 
-
+    return {}
 
 # Define the app layout with a location component for URL routing
 app.layout = html.Div([
