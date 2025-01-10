@@ -69,8 +69,8 @@ cluster_exploration_page_layout = html.Div(style={'padding': '20px', 'maxWidth':
     # Dropdown to select Cluster
     dcc.Dropdown(
         id='cluster-select',
-        options=[{'label': f'Cluster {i}', 'value': i} for i in df['Cluster'].unique()],
-        value=df['Cluster'].unique()[0],  # Default value
+        options=[{'label': f'Cluster {i}', 'value': i} for i in df['merged_labels'].unique()],
+        value=df['merged_labels'].unique()[0],  # Default value
         placeholder="Select a Cluster"
     ),
 
@@ -110,7 +110,7 @@ def update_tsne_plot(feature_group, selected_cluster):
         features = behaviours.columns  # Use the actual column names from the behaviours dataset
 
     # Filter data by cluster selection
-    cluster_data = df[df['Cluster'] == selected_cluster]
+    cluster_data = df[df['merged_labels'] == selected_cluster]
     
     # Apply t-SNE on the selected features
     tsne = TSNE(n_components=2, random_state=42)
@@ -121,7 +121,7 @@ def update_tsne_plot(feature_group, selected_cluster):
     cluster_data['TSNE2'] = tsne_results[:, 1]
     
     # Create the interactive t-SNE plot using Plotly
-    fig = px.scatter(cluster_data, x='TSNE1', y='TSNE2', color='Cluster',
+    fig = px.scatter(cluster_data, x='TSNE1', y='TSNE2', color='merged_labels',
                      title=f"t-SNE Plot for Cluster {selected_cluster}",
                      labels={'TSNE1': 't-SNE Component 1', 'TSNE2': 't-SNE Component 2'},
                      color_continuous_scale='Viridis',
