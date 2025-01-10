@@ -3,22 +3,36 @@ import pandas as pd
 import plotly.express as px
 from sklearn.manifold import TSNE
 
-# Load the pre-processed dataset
+# dataset with the required features and cluster labels
 df = pd.read_csv('df4.csv')
 
-# Feature groups
+# feature based characteristics
 preferences = df[['vendor_loyalty_score', 'relative_cuisine_variety', 'chain_consumption']]
 behaviours = df[['first_order', 'days_since_last_order', 'order_frequency', 'total_orders',
                  'total_amount_spent', 'average_spending']]
 
-# Columns available for visualization
-df_columns = [col for col in df.columns if col not in ['merged_labels']]
+# columns available for visualization
+df_columns = ['customer_id', 'CUI_American', 'CUI_Asian', 'CUI_Beverages', 'CUI_Cafe',
+       'CUI_Chicken Dishes', 'CUI_Chinese', 'CUI_Desserts', 'CUI_Healthy',
+       'CUI_Indian', 'CUI_Italian', 'CUI_Japanese', 'CUI_Noodle Dishes',
+       'CUI_OTHER', 'CUI_Street Food / Snacks', 'CUI_Thai', 'DOW_0', 'DOW_1',
+       'DOW_2', 'DOW_3', 'DOW_4', 'DOW_5', 'DOW_6', 'HR_0', 'HR_1', 'HR_10',
+       'HR_11', 'HR_12', 'HR_13', 'HR_14', 'HR_15', 'HR_16', 'HR_17', 'HR_18',
+       'HR_19', 'HR_2', 'HR_20', 'HR_21', 'HR_22', 'HR_23', 'HR_3', 'HR_4',
+       'HR_5', 'HR_6', 'HR_7', 'HR_8', 'HR_9', 'average_spending',
+       'customer_age', 'days_since_last_order', 'first_order', 'is_chain',
+       'last_order', 'order_frequency', 'product_count', 'total_amount_spent',
+       'total_orders', 'vendor_count', 'vendor_loyalty_score',
+       'relative_cuisine_variety', 'chain_consumption', 'customer_city',
+       'available_cuisines_city', 'cuisine_variety', 'last_promo',
+       'payment_method', 'age_group', 'customer_lifecycle_stage',
+       'peak_order_day', 'peak_order_hour']
 
-# Initialize the Dash app
+# initialize the Dash app
 app = Dash(__name__, external_stylesheets=['https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css'],
            suppress_callback_exceptions=True)
 
-# Main page layout
+# main page layout
 main_page_layout = html.Div(
     style={
         'height': '100vh',
@@ -49,7 +63,7 @@ main_page_layout = html.Div(
     ]
 )
 
-# Cluster Exploration layout
+# cluster Exploration layout
 cluster_exploration_page_layout = html.Div(style={'padding': '20px'}, children=[
     html.H1('Cluster Exploration', className='text-center mb-4'),
     dcc.Dropdown(
@@ -72,12 +86,15 @@ cluster_exploration_page_layout = html.Div(style={'padding': '20px'}, children=[
     dcc.Link(html.Button('Back to Main Page', className='btn btn-warning mt-4'), href='/')
 ])
 
+# callback to update the cluster graph and summary
 @app.callback(
     [Output('cluster-graph', 'figure'),
      Output('cluster-summary', 'children')],
     [Input('feature-select', 'value'),
      Input('cluster-select', 'value')]
 )
+
+# function to update the cluster graph and summary
 def update_cluster_visuals(feature_group, selected_cluster):
     features = preferences.columns if feature_group == 'preferences' else behaviours.columns
     cluster_data = df[df['merged_labels'] == selected_cluster]
@@ -96,7 +113,7 @@ def update_cluster_visuals(feature_group, selected_cluster):
 
     return fig, cluster_summary
 
-# Visualization Tools layout
+# visualization tools page layout
 compare_page_layout = html.Div(style={'padding': '20px'}, children=[
     html.H1('Visualization Tools 📊', className='text-center mb-4'),
     dcc.Dropdown(
@@ -125,6 +142,7 @@ compare_page_layout = html.Div(style={'padding': '20px'}, children=[
     dcc.Link(html.Button('Back to Main Page', className='btn btn-warning mt-4'), href='/')
 ])
 
+# callback to update the visualization output
 @app.callback(
     Output('visualization-output', 'figure'),
     [Input('chart-feature-select', 'value'),
@@ -134,13 +152,18 @@ compare_page_layout = html.Div(style={'padding': '20px'}, children=[
      Input('line-chart-button', 'n_clicks'),
      Input('heatmap-button', 'n_clicks')]
 )
+
+# function to update the visualization output
 def update_visualization(selected_feature, heatmap_features, box_clicks, hist_clicks, line_clicks, heatmap_clicks):
+    # get the callback context
     ctx = callback_context
     if not ctx.triggered:
         return px.scatter()
 
+    # get the button id that triggered the callback
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
+    # update the visualization based on the button clicked
     if button_id == 'heatmap-button' and heatmap_features:
         filtered_data = df[heatmap_features].select_dtypes(include=['number'])
         corr_matrix = filtered_data.corr()
@@ -163,6 +186,7 @@ app.layout = html.Div([
     html.Div(id='page-content')
 ])
 
+# callback to display the selected page
 @app.callback(Output('page-content', 'children'), [Input('url', 'pathname')])
 def display_page(pathname):
     if pathname == '/tsne':
@@ -171,5 +195,6 @@ def display_page(pathname):
         return compare_page_layout
     return main_page_layout
 
+# run the app
 if __name__ == '__main__':
     app.run_server(debug=True)
